@@ -1,0 +1,129 @@
+---
+title: "profit"
+output: html_notebook
+---
+
+本策略主要根据巴菲特的理论，看三个指标：
+1. 毛利率，是毛利比上销售收入，换句话说卖出东西后，你赚了多少？这个指标反应的是一个公司的赚钱能力，如果毛利高，那就意味着这家公司躺着都赚钱。巴菲特觉得，好的公司怎么毛利率也得超过40%，当然越高越好。比如A股上有家公司，毛利率竟然达到92%，这就是贵州茅台，一瓶1000块钱的茅台酒，他能赚920元，所有有人不客气的说，随便换什么人过去当老板，茅台一样很赚钱。
+2. 净利率，光看毛利润的话有时候会有误区，比如不知道销售费用和税以及一些其他费用的情况，换句话说有些东西虽然看似很赚钱，但很有可能很难卖。举个不恰当的例子，比如一个杯子你做出来需要5块钱，但你要卖1000元，这毛利率很高啊，但问题是谁买啊，这时候你为了制造销售假象，很可能贴1000块钱的销售成本进去，也就是说你买我的杯子，我贴你1005的现金，那一定是被抢购，毛利率非常高。但最后发现完全不赚钱。其实现在很多所谓互联网思维的公司已经是这么干了，比如外卖电商，都是贴钱卖出来的收入。
+3. 净资产收益率也就是ROE，是净利润除以净资产，说白了就是投多少钱到这个公司，能赚出多少钱。反应自有资金的利用效率，当然是越高越高。
+
+巴菲特还给这三个指标，设定了标准，也就是毛利率要高于40%，净利率要高于5%，净资产收益率要高于15%，这三个指标都达标的结果就是这家公司，很赚钱、产品很好销售，而且销售成本也不高，投下去的钱利用效率也很高。当然，就像上学考试一样，如果某一次人品爆发得了很好的成绩，老师可能会觉得你是抄的，所以要看是不是好公司，是不是能够穿越时间的周期，还要看他一贯的表现，往前看2-3年，如果他一直表现良好，这几个指标也都一直保持着很高的水平，那么肯定就是值得信赖的。而翻看整个A股，如今按照这个标准来判断，几家好的公司，基本都是大家耳熟能详的白马股，以食品饮料行业的个股居多，这也和区间统计是吻合的，过去20年里，食品饮料行业的收益远远超越大盘和其他行业。
+
+
+这三个指标需要横向、纵向比较，即跟同行比、跟自己比。
+
+# 获取数据
+
+获取盈利数据，使用Python的tushare库，R语言没有这方面的库。
+
+```{python}
+import tushare as ts
+import pandas as pd
+# import sqlite3
+from sqlalchemy import create_engine
+
+import os
+db_filename = 'D:/Projects/quant.db'
+if os.path.exists(db_filename):
+    os.remove(db_filename)
+
+engine = create_engine('sqlite:///' + db_filename)
+
+# 股票基本信息
+stock_basic = ts.get_stock_basics()
+stock_basic.to_sql('stock_basic', engine, if_exists='replace')
+
+# 收益
+for i in range(2014, 2017):
+    for j in range(1, 5):
+        stock_profit = ts.get_profit_data(i, j)
+        print("start to get " + str(i) + " " + str(j))
+        stock_profit["date"] = str(i) + "-" + str(j)
+        stock_profit.to_sql('stock_profit', engine, if_exists='append')
+
+```
+
+# 处理数据
+
+## 载入数据
+```{r warning=FALSE}
+library(dplyr)
+library(dbplyr)
+library(RSQLite)
+
+conn <- src_sqlite("D:/Projects/quant.db")
+
+stock_basic <- tbl(conn, "stock_basic") %>% collect()
+stock_profit <- tbl(conn, "stock_profit") %>% select(-index) %>% collect()
+```
+
+## stock_profit重复数据问题
+```{r}
+groupby <- stock_profit %>% group_by(code, date) %>% summarise(num = n())
+table(groupby$num)
+```
+
+去重
+
+```{r warning=FALSE, message=FALSE}
+dim(stock_profit)
+stock_profit <- stock_profit[!duplicated(stock_profit),]
+dim(stock_profit)
+```
+
+数据清洗完毕，下面开始整理
+
+```{r warning=FALSE}
+# 毛利率
+gross <- stock_basic %>% select(code, name, industry, pe, timeToMarket)
+
+dates <- stock_profit %>% select(date) %>% unique() %>% arrange()
+
+for (i in dates$date) {
+    x <- stock_profit %>% filter(date == i) %>% select(code, gross_profit_rate)
+    gross <- gross %>% left_join(x, by = "code")
+    names(gross)[length(names(gross))] <- i
+}
+
+gross$mean <- apply(gross[,dates$date], 1, mean, na.rm = TRUE)
+gross$sd <- apply(gross[,dates$date], 1, sd, na.rm = TRUE)
+
+```
+
+
+```{python}
+import pandas as pd
+from pandas import Series
+import tushare as ts
+# import sqlite3
+from sqlalchemy import create_engine
+
+engine = create_engine('sqlite:///D:/Python/quant.db')
+
+stock_basic = ts.get_stock_basics()
+stock_basic.to_sql('stock_basic', engine, if_exists='replace')
+
+print('stock basics write success.')
+
+for symbol in stock_basic.index.get_values():
+    # 该股票是否已经获取到
+
+    stock_hist = ts.get_hist_data(symbol)
+    stock_hist['symbol'] = symbol
+    stock_hist.to_sql('stock_hist', engine, if_exists='append')
+    print(symbol + ' write success.')
+
+
+
+
+
+
+# x = ts.get_report_data(2017, 1)
+# print(x)
+
+# df = ts.get_today_all()
+# df.to_sql('data', engine)
+
+```
+
