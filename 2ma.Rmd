@@ -1,0 +1,14 @@
+---
+title: "2ma"
+output: html_notebook
+---
+
+双均线策略。
+15均上穿20均，买，下穿，卖。
+
+5均  10均
+
+多试验几种看看
+
+
+参考：[二条均线打天下](http://blog.fens.me/finance-stock-ma/)
