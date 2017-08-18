@@ -11,4 +11,17 @@ output: html_notebook
 多试验几种看看
 
 
+移动平均线是趋势性模型，在频繁波动阶段，不适用。
+
+
+
+
+```{r}
+library(quantmod)
+
+names(stock) <- sub("^.*\\.", "", names(stock))
+
+```
+
+
 参考：[二条均线打天下](http://blog.fens.me/finance-stock-ma/)
