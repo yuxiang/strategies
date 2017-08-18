@@ -1,0 +1,277 @@
+---
+title: "quantmod"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## quantmod包中的函数
+
+quantmod中分为三类函数：
+
+* ETL函数，把数据拿到手，从公开的数据源中拿数据
+* 分析类函数，对拿回来的数据计算指标等
+* 展现类函数，画K线图等
+
+常用的数据类型：
+
+* Op，Open price，开盘价
+* Hi，High price，最高价
+* Lo，Low price，最低价
+* Cl，Close price，收盘价
+* Vo，Volume，交易量
+* Ad，Adjusted price，调整价格
+* HLC，High price、Low price、Close price，最高价、最低价和收盘价
+* OHLC，Open price、High price、Low price、Close price，开盘价、最高价、最低价和收盘价
+
+主要函数：
+
+* getSymbols()，获取股票信息
+* getDividends()，获取上市公司的股息数据
+* getFinancials()，获取上市公司的财务报表
+* getFX()，获取汇率数据
+* getMetals()，获取重金属交易数据
+* getSplits()，获取上市公司的拆股数据
+* getOptionChain()，获取期权交易数据
+* getQuote()，获取即时的网络报价
+
+getSymbols系列函数有：
+
+* getSymbols.csv()
+* getSymbols.FRED()
+* getSymbols.google()
+* getSymbols.MySQL()
+* getSymbols.oanda()
+* getSymbols.rda()
+* getSymbols.SQLite()
+* getSymbols.yahoo()
+
+## ETL函数
+
+其中最重要的是getSymbols函数：
+
+```{r}
+library(quantmod)
+# 苹果公司股票
+getSymbols("AAPL",src="yahoo",from="2015-01-01",to="2015-12-31")
+head(AAPL)
+
+# 欧元美元
+getFX("EUR/USD", from="2016-01-01")
+head(EURUSD)
+```
+
+### environment in R ###
+
+**environment** 就是一个容器
+
+R环境有一个缺省的全局environment，不指定environment的话，默认就是这个。
+
+如果因为某种目的需要将某些变量集中存放到一起，就要用到environment。
+
+```{r}
+new.environment <- new.env()
+getSymbols("AAPL",env=new.environment,scr="yahoo",from="2015-01-01",to="2015-12-31")
+ls(envir=new.environment)
+head(get("AAPL",envir=new.environment))
+```
+
+
+
+## 分析类函数 ##
+
+### is族函数 ###
+判断某数据是否是某类型的数据：
+
+* is.OHLC()
+* is.OHLCV()
+* is.BBO()
+* is.TBBO()
+* is.HLC()
+
+```{r}
+getSymbols("AAPL",env=new.environment,scr="yahoo",from="2015-01-01",to="2015-12-31")
+is.OHLC(AAPL)
+is.OHLCV(AAPL)
+is.BBO(AAPL)
+is.TBBO(AAPL)
+is.HLC(AAPL)
+```
+
+
+### has族函数 ###
+检查数据里面是否包含某类型的数据
+...
+```{r}
+has.OHLC(AAPL)
+has.OHLC(AAPL,which=FALSE)
+has.OHLC(AAPL,which=TRUE)
+```
+
+### 列名函数 ###
+提取某种类型的数据
+* Op()
+  Hi()
+...
+
+### 计算函数 ###
+
+* Delt         计算变化率
+* Lag          求滞后K期
+* Next         求K个后
+* first        求前K个
+* last         求后K个
+* findPeaks    找出峰值
+* findValleys  找出谷值
+* seriesIncr   差分后大于限值的点
+* seriesDecr   差分后小于限值的点
+* endpoints    寻找节点
+* to.weekly    将OHLC数据转化为周数据
+* to.monthly                   月
+* periodicity  返回数据的日期范围
+
+计算不同阶段的收益率
+* periodReturn
+* dailyReturn
+* weeklyReturn
+* monthlyReturn
+* quarterlyReturn
+* allReturn
+
+## 书面作业 ## 
+
+quantmod的ETL函数下载Apple,Microsoft,Oracle,Google四家公司全量股票行情数据
+1)求出Apple公司在2013.1-2013.10的股票总成交量使用
+2)找出这些股票暴涨暴跌的时间点（例如开盘价或收盘价比前一天涨跌幅度超过2%），通过搜索引擎寻找是什么原因导致这些暴涨暴跌，观察（或用程序分析）数据，看就暴涨暴跌事件是否有可以利用的买卖规律
+3)截取一段时间内这四家公司股价数据（注意分红派息除权对股价的影响），用R中的相关性分析判断股价之间的相关性，或者用R基础课程第八周所讲的MIC指标对其进行分析
+
+```{r}
+library(quantmod)
+new.environment <- new.env()
+
+# getSymbols("AAPL",env=new.environment,from="2016-01-01")
+# getSymbols("MSFT",env=new.environment,from="2016-01-01")
+# getSymbols("ORCL",env=new.environment,from="2016-01-01")
+# getSymbols("GOOG",env=new.environment,from="2016-01-01")
+
+getSymbols(c("AAPL","MSFT","ORCL","GOOG"),env=new.environment,from="2013-01-01",to="2013-10-31")
+
+ls(envir=new.environment)
+
+a <- get("AAPL",envir=new.environment)
+# 1. 总成交量
+# sum(get("AAPL",envir=new.environment)[,"AAPL.Volume"])
+sum(a[,"AAPL.Volume"])
+
+# 2. 暴涨暴跌
+# a[abs(Delt(Cl(a))) > 0.02]->aa
+
+AAPL.Cl <- Delt(Cl(a),type="arithmetic")
+AAPL.Cl[which(abs(AAPL.Cl)>0.02),]
+plot(AAPL.Cl)
+
+getDividends("AAPL",env=new.environment,scr="yahoo",from="2013-01-01",to="2013-10-31")
+getDividends("GOOG",env=new.environment,scr="yahoo",from="2013-01-01",to="2013-10-31")
+getDividends("MSFT",env=new.environment,scr="yahoo",from="2013-01-01",to="2013-10-31")
+getDividends("ORCL",env=new.environment,scr="yahoo",from="2013-01-01",to="2013-10-31")
+
+
+Open=cbind(Op(get("AAPL",envir=new.environment)),Op(get("MSFT",envir=new.environment)),Op(get("GOOG",envir=new.environment)),Op(get("ORCL",envir=new.environment)))
+
+cor(Open)
+
+close <- cbind(Cl(get("AAPL",envir=new.environment)),Cl(get("MSFT",envir=new.environment)),Cl(get("GOOG",envir=new.environment)),Cl(get("ORCL",envir=new.environment)))
+
+cor(close)
+
+# MIC指标法
+# 到http://www.exploredata.net/Downloads/MINE-Application 下载MINE.jar和MINE.r放到工作目录下
+library(rJava)
+source("MINE.R")
+
+write.csv(Open, "Open.csv")
+MINE("Open.csv","all.pairs")
+
+
+```
+
+
+## 展现类函数 ##
+1. 基本图形的作图：K线图、条形图、线图
+2. 技术分析图
+
+主绘图函数：
+* **chartSeries**
+
+辅助函数：
+* chartTheme
+* reChart，修改已经画出来的图
+* barChart，把chartSeries函数的type参数设为bar
+* candleChart，画蜡烛图
+* lineChart，line.type=l,p,b
+
+
+```{R}
+candleChart(AAPL,theme="white",subset="2013-10-05::2013-10-31")
+```
+
+
+## 技术分析图 ##
+* 技术分析的背景
+* 技术分析图的函数
+* 技术分析图的画法
+
+
+addADX，ADX：平均趋向指标，Average Directional Index
+addATR
+addBBands
+addCCI
+addCMF
+addCMO
+addEMA
+addEnvelope
+addEVWMA
+addMACD
+addMomentum
+addExpiry
+addSAR
+addSMA
+addSMI
+addDEMA
+addDPO
+addROC
+addRSI
+addVo
+addWMA
+addWPR
+addZLEMA
+
+
+第二周作业：
+
+下载Apple，Microsoft，Oracle。Google公司2011-2012年交易行情数据，分别画出蜡烛图以及ADX子图
+1 试对ADX指标进行技术分析，指出某段时间里根据ADX及相关指标研读出来的走势预测
+2 求出每种股票在上述年份内ADX指标同时低于DI+和DI-的时间段
+
+```{r}
+library(quantmod)
+
+getSymbols(c("AAPL","MSFT","ORCL","GOOG"),from="2013-01-01",to="2013-10-31")
+
+candleChart(AAPL)
+addADX()
+
+candleChart(MSFT)
+addADX()
+
+candleChart(ORCL)
+addADX()
+
+candleChart(GOOG)
+addADX()
+```
+
+
+
