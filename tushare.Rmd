@@ -1,0 +1,145 @@
+---
+title: "tushare Notebook"
+output: html_notebook
+---
+
+
+# 安装
+
+首先安装 [Anaconda](http://www.continuum.io/downloads)
+
+安装：pip install tushare
+
+升级：pip install tushare --upgrade
+
+
+```{python}
+# 检查
+import tushare as ts
+print(ts.__version__)
+```
+
+# 获取数据
+
+## 基本面数据
+数据来自sina财经，由于财务数据项目比较多，所以拆分成了几个表，使用时可以通过股票代码合并在一起，也可以独立使用。数据在获取时，需要一页一页的抓取，所以需要一点等待时间，最后会合并成一个大表。
+
+### 股票列表
+```{python}
+stock_basic = ts.get_stock_basics()
+stock_basic.head(5)
+```
+
+返回值说明：
+* code,代码
+* name,名称
+* industry,所属行业
+* area,地区
+* pe,市盈率
+* outstanding,流通股本
+* totals,总股本(万)
+* totalAssets,总资产(万)
+* liquidAssets,流动资产
+* fixedAssets,固定资产
+* reserved,公积金
+* reservedPerShare,每股公积金
+* eps,每股收益
+* bvps,每股净资
+* pb,市净率
+* timeToMarket,上市日期
+
+如果是使用自己的数据，只要表头与默认文件格式一致，可设定文件路径的方式读入，例如：ts.get_stock_basics("c:\all_stocks.csv")
+
+### 业绩报告（主表）
+
+按年度、季度获取业绩报表数据。
+
+
+```{python}
+# 获取 2016 年第 4 季度的业绩报表数据
+report = ts.get_report_data(2016, 4)
+report.head(5)
+```
+
+返回值说明：
+* code,代码
+* name,名称
+* eps,每股收益
+* eps_yoy,每股收益同比(%)
+* bvps,每股净资产
+* roe,净资产收益率(%)
+* epcf,每股现金流量(元)
+* net_profits,净利润(万元)
+* profits_yoy,净利润同比(%)
+* distrib,分配方案
+* report_date,发布日期
+
+### 盈利能力
+
+按年度、季度获取盈利能力数据
+
+```{r}
+# 获取 2016 年第 4 季度的盈利能力数据
+profit = ts.get_profit_data(2016, 4)
+profit.head(5)
+```
+
+返回值说明：
+* code,代码
+* name,名称
+* roe,净资产收益率(%)
+* net_profit_ratio,净利率(%)
+* gross_profit_rate,毛利率(%)
+* net_profits,净利润(万元)
+* eps,每股收益
+* business_income,营业收入(百万元)
+* bips,每股主营业务收入(元)
+
+### 营运能力
+
+按年度、季度获取营运能力数据
+
+```{r}
+# 获取 2016 年第 4 季度的营运能力数据
+operation = ts.get_operation_data(2016, 4)
+operation.head(5)
+```
+
+返回值说明：
+* code,代码
+* name,名称
+* arturnover,应收账款周转率(次)
+* arturndays,应收账款周转天数(天)
+* inventory_turnover,存货周转率(次)
+* inventory_days,存货周转天数(天)
+* currentasset_turnover,流动资产周转率(次)
+* currentasset_days,流动资产周转天数(天)
+
+
+### 成长能力
+
+按年度、季度获取成长能力数据
+
+```{r}
+# 获取 2016 年第 4 季度的成长能力数据
+growth = ts.get_growth_data(2016, 4)
+growth.head(5)
+```
+
+
+返回值说明：
+* code,代码
+* name,名称
+* mbrg,主营业务收入增长率(%)
+* nprg,净利润增长率(%)
+* nav,净资产增长率
+* targ,总资产增长率
+* epsg,每股收益增长率
+* seg,股东权益增长率
+
+
+
+
+
+
+
