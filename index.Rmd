@@ -34,8 +34,8 @@ output: html_notebook
 ```{r}
 library(quantmod)
 ss <- getSymbols("^SSEC", auto.assign = FALSE)
-print(head(ss))
-print(summary(ss))
+head(ss)
+summary(ss)
 # candleChart(ss,theme="white")
 # chartSeries(ss, up.col='red', dn.col='green', TA="addVo(); addMACD(); addSMA(n=10)")
 ```
@@ -52,13 +52,65 @@ ss <- ss[complete.cases(ss),]
 print(nrow(ss))
 ```
 
+调整下列名：
+```{r}
+names(ss) <- sub("^.*\\.", "", names(ss))
+head(ss)
+```
+
+
 下面开始定投
 
 每月第一个交易日，投1000块。
 两个对照组，一个是银行理财产品，比如余额宝，假定年化收益是6%，一个月0.5%；第二个对照组选沪深300指数。
 
+```{r}
+# 表示出每月的第一个交易日
 
+d <- index(ss)
+dd <- as.numeric(paste0(substr(d, 1, 4), substr(d, 6, 7)))
+ddd <- c(1, diff(dd))
 
+data <- data.frame(date = d, Open = ss$Open, Close = ss$Close, invest = ifelse(ddd>0,1000,0), return = dailyReturn(ss))
 
+row.names(data) <- 1:length(d)
 
+head(data, 100)
+
+# head(dd, 300)
+# head(dd2,300)
+```
+
+计算收益，先计算从最开始就定投
+```{r}
+tt <- rep(0, nrow(data))
+tt[1] <- data$invest[1] * (1 + data$daily.returns[1])
+for (i in 2:nrow(data)) {
+    tt[i] <- (tt[i - 1] + data$invest[i]) * (1 + data$daily.returns[i])
+}
+data1 <- data
+data1$total <- tt
+head(data1, 100)
+```
+
+画出来看看
+```{r}
+library(ggplot2)
+gg <- ggplot(data = data1)
+gg <- gg + geom_line(aes(x = date, y = total))
+gg
+```
+
+看看收益情况
+```{r}
+total_money <- sum(data1$invest)
+total_money
+
+finally_money <- data1$total[nrow(data1)]
+finally_money
+
+(finally_money - total_money)/total_money
+```
+
+好低啊 
 
