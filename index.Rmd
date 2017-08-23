@@ -3,11 +3,7 @@ title: "指数定投"
 output: html_notebook
 ---
 
-股神巴菲特在面对公众的时候，第一常干的事情是喝可乐卖萌。
-
-![巴菲特喝可乐](images/巴菲特喝可乐.jpg)
-
-第二常干的事情，就是部不断的教导大家：
+股神巴菲特不断的教导大家：
 
 **“对于个人投资者而言，最好的投资方式就是指数定投！”**
 
@@ -25,20 +21,30 @@ output: html_notebook
 
 难道我在上证指数历史最高6000多点的时候(2007年10月)开始定投，也能不亏钱？
 
-# 二、Python验证
+# 二、模拟验证
 
-作为熟练使用Python的我们，这时候就要写几行代码，来看看是否果真如此。
+作为程序猿，只要写几行代码，就知道事实如何。
 
 为了简单起见，我们直接用指数代替指数基金。我们找来上证指数的数据，如下图所示：
 
 ```{r}
 library(quantmod)
 ss <- getSymbols("^SSEC", auto.assign = FALSE)
+
+# 调整列名：
+names(ss) <- sub("^.*\\.", "", names(ss))
+
 head(ss)
 summary(ss)
 # candleChart(ss,theme="white")
 # chartSeries(ss, up.col='red', dn.col='green', TA="addVo(); addMACD(); addSMA(n=10)")
 ```
+
+看下K线图
+```{r}
+candleChart(ss)
+```
+
 
 报缺失值问题
 ```{r}
@@ -52,26 +58,19 @@ ss <- ss[complete.cases(ss),]
 print(nrow(ss))
 ```
 
-调整下列名：
-```{r}
-names(ss) <- sub("^.*\\.", "", names(ss))
-head(ss)
-```
-
-
 下面开始定投
 
 每月第一个交易日，投1000块。
 两个对照组，一个是银行理财产品，比如余额宝，假定年化收益是6%，一个月0.5%；第二个对照组选沪深300指数。
 
 ```{r}
-# 表示出每月的第一个交易日
+# 标识出每月的第一个交易日
 
 d <- index(ss)
 dd <- as.numeric(paste0(substr(d, 1, 4), substr(d, 6, 7)))
 ddd <- c(1, diff(dd))
 
-data <- data.frame(date = d, Open = ss$Open, Close = ss$Close, invest = ifelse(ddd>0,1000,0), return = dailyReturn(ss))
+data <- data.frame(date = d, Open = ss$Open, Close = ss$Close, invest = ifelse(ddd>0,1000,0), return = as.vector(dailyReturn(ss)))
 
 row.names(data) <- 1:length(d)
 
@@ -83,13 +82,20 @@ head(data, 100)
 
 计算收益，先计算从最开始就定投
 ```{r}
-tt <- rep(0, nrow(data))
-tt[1] <- data$invest[1] * (1 + data$daily.returns[1])
-for (i in 2:nrow(data)) {
-    tt[i] <- (tt[i - 1] + data$invest[i]) * (1 + data$daily.returns[i])
+# 计算每天的净值，参数表示从第几天开始
+total_money <- function(start = 1) {
+    result <- rep(0, nrow(data) - start + 1)
+    result[1] <- 1000 * (1 + data$return[start])
+    for (i in 2:length(result)) {
+        result[i] <- (result[i - 1] + data$invest[start + i - 1]) * (1 + data$return[start + i - 1])
+    }
+    return(result)
 }
-data1 <- data
-data1$total <- tt
+
+start = 1
+
+data1 <- data[start:nrow(data),]
+data1$total <- total_money(start)
 head(data1, 100)
 ```
 
@@ -114,3 +120,38 @@ finally_money
 
 好低啊 
 
+
+下面随机选10天作为起始点，看看收益情况
+
+```{r}
+starts <- sample(1:nrow(data), 10)
+print(starts)
+
+data2 <- data.frame()
+for (i in starts) {
+    data2 <- rbind(data2, data.frame(date = data$date[i:nrow(data)], total = total_money(i), group = i))
+}
+```
+
+画出来看看
+```{r}
+ggplot(data = data2) + geom_line(aes(x = date, y = total, group = group))
+```
+
+
+很有意思，居然无视指数的涨跌，走出差不多的走势。
+
+看下各自收益
+```{r}
+library(dplyr)
+returns <- c()
+for (i in starts) {
+    data2 %>% filter(group == i) -> x
+    invest_total <- length(unique(substr(x$date, 1, 7))) * 1000
+    returns[length(returns) + 1] <- (x$total[length(x$total)] - invest_total)/invest_total
+}
+names(returns) <- starts
+print(returns)
+```
+
+对照组都不用看了。
